@@ -2,7 +2,7 @@
   "name": "claude-code-watcher",
   "productName": "Claude Code Watcher",
   "author": "onorbumbum",
-  "version": "1.0.0",
+  "version": "1.0.1",
   "description": "Real-time monitoring dashboard for Claude Code sessions",
   "main": "main.js",
   "license": "MIT",

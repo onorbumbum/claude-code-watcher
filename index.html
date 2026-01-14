@@ -513,7 +513,7 @@
 
   <script>
     // Use the secure API exposed via preload script
-    const api = window.api;
+    const electronAPI = window.api;
 
     const POLL_INTERVAL = 2000;
     const SESSIONS_POLL_INTERVAL = 5000;
@@ -545,7 +545,7 @@
     // ============================================
     async function checkSetup() {
       try {
-        const status = await api.checkSetup();
+        const status = await electronAPI.checkSetup();
         isSetupComplete = status.claudeDirExists && status.scriptExists && status.hooksConfigured;
 
         if (isSetupComplete) {
@@ -588,7 +588,7 @@
       setupStatus.className = 'setup-status';
 
       try {
-        const result = await api.runSetup();
+        const result = await electronAPI.runSetup();
 
         if (result.success) {
           step1.textContent = '✓';
@@ -646,7 +646,7 @@
 
     async function updateHookStatus() {
       try {
-        const status = await api.checkSetup();
+        const status = await electronAPI.checkSetup();
         const hooksInstalled = status.hooksConfigured && status.scriptExists;
 
         if (hooksInstalled) {
@@ -674,7 +674,7 @@
       installHooksBtn.querySelector('span:last-child').textContent = 'Installing...';
 
       try {
-        const result = await api.runSetup();
+        const result = await electronAPI.runSetup();
         if (result.success) {
           installHooksBtn.querySelector('span:last-child').textContent = 'Installed!';
           await updateHookStatus();
@@ -726,7 +726,7 @@
       uninstallHooksBtn.querySelector('span:last-child').textContent = 'Uninstalling...';
 
       try {
-        const result = await api.runUninstall();
+        const result = await electronAPI.runUninstall();
         if (result.success) {
           uninstallHooksBtn.querySelector('span:last-child').textContent = 'Uninstalled!';
           await updateHookStatus();
@@ -861,7 +861,7 @@
 
     async function fetchSessions() {
       try {
-        const data = await api.readSessions();
+        const data = await electronAPI.readSessions();
         sessions = JSON.parse(data || '[]').sort((a,b) => b.lastSeen - a.lastSeen);
         if (!activeSessionId && sessions.length) activeSessionId = sessions[0].id;
         const ids = new Set(sessions.map(s=>s.id));
@@ -874,7 +874,7 @@
       if (isPaused) return;
       const rel = session.path.replace(/.*\/.claude\//, '');
       try {
-        const text = await api.readTranscript(rel);
+        const text = await electronAPI.readTranscript(rel);
         if (!sessionData[session.id]) sessionData[session.id] = { messages: [], lastLength: 0 };
         if (text.length === sessionData[session.id].lastLength) return;
         sessionData[session.id].lastLength = text.length;
