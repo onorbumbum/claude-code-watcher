@@ -1,0 +1,64 @@
+{
+  "name": "claude-code-watcher",
+  "productName": "Claude Code Watcher",
+  "author": "onorbumbum",
+  "version": "1.0.0",
+  "description": "Real-time monitoring dashboard for Claude Code sessions",
+  "main": "main.js",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/onorbumbum/claude-code-watcher.git"
+  },
+  "homepage": "https://github.com/onorbumbum/claude-code-watcher#readme",
+  "bugs": {
+    "url": "https://github.com/onorbumbum/claude-code-watcher/issues"
+  },
+  "keywords": [
+    "claude",
+    "claude-code",
+    "monitoring",
+    "dashboard",
+    "electron",
+    "developer-tools"
+  ],
+  "scripts": {
+    "start": "electron .",
+    "build": "electron-builder --mac",
+    "build:dir": "electron-builder --mac --dir",
+    "build:win": "electron-builder --win --dir",
+    "build:linux": "electron-builder --linux --dir"
+  },
+  "build": {
+    "appId": "com.claude-code-watcher.app",
+    "productName": "Claude Code Watcher",
+    "icon": "logo.png",
+    "mac": {
+      "category": "public.app-category.developer-tools",
+      "target": ["dir"],
+      "icon": "icon.icns"
+    },
+    "win": {
+      "target": ["dir"],
+      "icon": "logo.png"
+    },
+    "linux": {
+      "target": ["dir"],
+      "icon": "logo.png"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "index.html",
+      "logo.png",
+      "icon.icns"
+    ],
+    "directories": {
+      "output": "dist"
+    }
+  },
+  "devDependencies": {
+    "electron": "^28.0.0",
+    "electron-builder": "^24.13.3"
+  }
+}

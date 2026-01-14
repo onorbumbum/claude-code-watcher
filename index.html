@@ -1,0 +1,915 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Claude Code Watcher</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;600&family=Space+Grotesk:wght@400;500;600&display=swap" rel="stylesheet">
+  <style>
+    /* Dark mode (default) - improved contrast */
+    :root, [data-theme="dark"] {
+      --bg-base: #09090b;
+      --bg-elevated: #18181b;
+      --bg-card: #1f1f23;
+      --border: #3f3f46;
+      --border-subtle: #27272a;
+      --text-primary: #fafafa;
+      --text-secondary: #d4d4d8;
+      --text-muted: #a1a1aa;
+      --accent-blue: #60a5fa;
+      --accent-emerald: #34d399;
+      --accent-violet: #a78bfa;
+      --accent-amber: #fbbf24;
+      --accent-rose: #fb7185;
+      --accent-coral: #d4856c;
+      --glow-blue: rgba(96, 165, 250, 0.2);
+      --glow-emerald: rgba(52, 211, 153, 0.2);
+      --glow-violet: rgba(167, 139, 250, 0.2);
+      --shadow-color: rgba(0, 0, 0, 0.5);
+    }
+
+    /* Light mode */
+    [data-theme="light"] {
+      --bg-base: #f8fafc;
+      --bg-elevated: #ffffff;
+      --bg-card: #ffffff;
+      --border: #e2e8f0;
+      --border-subtle: #f1f5f9;
+      --text-primary: #0f172a;
+      --text-secondary: #334155;
+      --text-muted: #64748b;
+      --accent-blue: #2563eb;
+      --accent-emerald: #059669;
+      --accent-violet: #7c3aed;
+      --accent-amber: #d97706;
+      --accent-rose: #e11d48;
+      --accent-coral: #c2410c;
+      --glow-blue: rgba(37, 99, 235, 0.1);
+      --glow-emerald: rgba(5, 150, 105, 0.1);
+      --glow-violet: rgba(124, 58, 237, 0.1);
+      --shadow-color: rgba(0, 0, 0, 0.1);
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: 'Space Grotesk', system-ui, sans-serif;
+      background: var(--bg-base);
+      color: var(--text-primary);
+      min-height: 100vh;
+      -webkit-app-region: drag;
+    }
+    header {
+      background: var(--bg-elevated);
+      border-bottom: 1px solid var(--border);
+      padding: 0.75rem 1rem;
+      padding-left: 80px; /* Space for traffic lights */
+      position: sticky;
+      top: 0;
+      z-index: 100;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      -webkit-app-region: drag;
+    }
+    .logo { display: flex; align-items: center; gap: 0.5rem; }
+    .logo-icon {
+      width: 28px; height: 28px;
+      border-radius: 5px;
+      image-rendering: pixelated;
+    }
+    h1 { font-size: 0.9rem; font-weight: 600; }
+    .controls {
+      display: flex; gap: 0.4rem; align-items: center;
+      -webkit-app-region: no-drag;
+    }
+    button {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      padding: 0.35rem 0.65rem;
+      border-radius: 5px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.7rem;
+      cursor: pointer;
+      transition: all 0.15s;
+    }
+    button:hover { background: var(--bg-elevated); color: var(--text-primary); }
+    .status-badge {
+      display: flex; align-items: center; gap: 0.3rem;
+      font-size: 0.6rem; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.04em;
+    }
+    .status-dot {
+      width: 5px; height: 5px; border-radius: 50%;
+      background: var(--accent-emerald);
+      box-shadow: 0 0 6px var(--accent-emerald);
+      animation: pulse 2s infinite;
+    }
+    @keyframes pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.5; } }
+
+    .tabs-container {
+      background: var(--bg-elevated);
+      border-bottom: 1px solid var(--border);
+      padding: 0 1rem;
+      -webkit-app-region: no-drag;
+    }
+    .tabs-wrapper {
+      display: flex; gap: 0.2rem; overflow-x: auto; padding: 0.4rem 0;
+    }
+    .tab {
+      display: flex; align-items: center; gap: 0.4rem;
+      padding: 0.4rem 0.6rem;
+      background: transparent;
+      border: 1px solid transparent;
+      border-radius: 5px;
+      cursor: pointer;
+      transition: all 0.15s;
+      white-space: nowrap;
+    }
+    .tab:hover { background: var(--bg-card); border-color: var(--border-subtle); }
+    .tab.active { background: var(--bg-card); border-color: var(--accent-blue); }
+    .tab-indicator {
+      width: 6px; height: 6px; border-radius: 50%;
+      background: var(--accent-emerald);
+      box-shadow: 0 0 4px var(--accent-emerald);
+      animation: pulse 2s infinite;
+    }
+    .tab-name { font-size: 0.75rem; font-weight: 500; color: var(--text-secondary); }
+    .tab.active .tab-name { color: var(--text-primary); }
+    .tab-id { font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; color: var(--text-muted); }
+    .no-sessions { padding: 0.6rem; color: var(--text-muted); font-size: 0.75rem; font-style: italic; }
+
+    main {
+      padding: 1rem;
+      max-height: calc(100vh - 90px);
+      overflow-y: auto;
+      -webkit-app-region: no-drag;
+    }
+    .empty-state { text-align: center; padding: 2.5rem; color: var(--text-muted); }
+    .empty-state h2 { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: 0.3rem; }
+    .empty-state p { font-size: 0.75rem; }
+
+    .message {
+      background: var(--bg-card);
+      border: 1px solid var(--border-subtle);
+      border-radius: 8px;
+      margin-bottom: 0.5rem;
+      overflow: hidden;
+      animation: slideIn 0.2s ease-out;
+    }
+    @keyframes slideIn { from { opacity: 0; transform: translateY(-4px); } to { opacity: 1; transform: translateY(0); } }
+    .message-header {
+      display: flex; align-items: center; gap: 0.5rem;
+      padding: 0.5rem 0.75rem;
+      border-bottom: 1px solid var(--border-subtle);
+    }
+    .role-badge {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.55rem; font-weight: 600;
+      text-transform: uppercase; letter-spacing: 0.04em;
+      padding: 0.15rem 0.35rem; border-radius: 3px;
+    }
+    .message.assistant .role-badge { background: var(--glow-blue); color: var(--accent-blue); }
+    .message.thinking .role-badge { background: var(--glow-violet); color: var(--accent-violet); }
+    .message.user .role-badge { background: var(--glow-emerald); color: var(--accent-emerald); }
+    .timestamp { font-family: 'JetBrains Mono', monospace; font-size: 0.6rem; color: var(--text-muted); margin-left: auto; }
+    .message-content { padding: 0.75rem; }
+    .message-content p { font-size: 0.78rem; line-height: 1.6; color: var(--text-secondary); }
+    .message.thinking .message-content p { color: var(--accent-violet); font-style: italic; opacity: 0.85; }
+    .message-content code {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.72em; background: var(--bg-base);
+      padding: 0.1rem 0.3rem; border-radius: 3px; color: var(--accent-amber);
+    }
+    .message-content pre {
+      font-family: 'JetBrains Mono', monospace;
+      font-size: 0.7rem; background: var(--bg-base);
+      padding: 0.7rem; border-radius: 5px;
+      overflow-x: auto; margin: 0.5rem 0;
+      border: 1px solid var(--border-subtle);
+    }
+    .message-content pre code { background: none; padding: 0; color: var(--text-secondary); }
+
+    .tool-call {
+      background: var(--bg-base);
+      border: 1px solid var(--border-subtle);
+      border-radius: 5px;
+      margin: 0.35rem 0;
+      overflow: hidden;
+    }
+    .tool-header {
+      display: flex; align-items: center; gap: 0.35rem;
+      padding: 0.4rem 0.55rem;
+      cursor: pointer;
+      transition: background 0.1s;
+    }
+    .tool-header:hover { background: var(--bg-elevated); }
+    .tool-icon {
+      width: 14px; height: 14px;
+      background: var(--accent-amber);
+      border-radius: 3px;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.5rem; color: var(--bg-base); font-weight: 600;
+    }
+    .tool-name { font-family: 'JetBrains Mono', monospace; font-size: 0.7rem; color: var(--accent-amber); }
+    .tool-expand { font-size: 0.55rem; color: var(--text-muted); margin-left: auto; }
+    .tool-details {
+      display: none;
+      padding: 0.55rem;
+      border-top: 1px solid var(--border-subtle);
+      max-height: 180px;
+      overflow: auto;
+    }
+    .tool-call.expanded .tool-details { display: block; }
+    .tool-details pre {
+      margin: 0; font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem; color: var(--text-muted);
+      white-space: pre-wrap; word-break: break-word;
+    }
+
+    .tool-result {
+      background: var(--bg-base);
+      border-left: 2px solid var(--accent-emerald);
+      padding: 0.55rem;
+      margin: 0.35rem 0;
+      border-radius: 0 4px 4px 0;
+      max-height: 120px;
+      overflow: auto;
+    }
+    .tool-result.error { border-left-color: var(--accent-rose); }
+    .tool-result pre {
+      margin: 0; font-family: 'JetBrains Mono', monospace;
+      font-size: 0.65rem; color: var(--text-muted);
+      white-space: pre-wrap; word-break: break-word;
+    }
+
+    ::-webkit-scrollbar { width: 5px; height: 5px; }
+    ::-webkit-scrollbar-track { background: var(--bg-base); }
+    ::-webkit-scrollbar-thumb { background: var(--border); border-radius: 3px; }
+
+    /* Setup screen styles */
+    .setup-screen {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: center;
+      min-height: calc(100vh - 60px);
+      padding: 2rem;
+      text-align: center;
+      -webkit-app-region: no-drag;
+    }
+    .setup-logo {
+      width: 120px; height: 120px;
+      image-rendering: pixelated;
+      margin-bottom: 1.5rem;
+      border-radius: 16px;
+      box-shadow: 0 8px 32px rgba(212, 133, 108, 0.2);
+    }
+    .setup-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      margin-bottom: 0.5rem;
+      color: var(--text-primary);
+    }
+    .setup-subtitle {
+      font-size: 0.9rem;
+      color: var(--text-secondary);
+      margin-bottom: 2rem;
+      max-width: 400px;
+      line-height: 1.5;
+    }
+    .setup-card {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 12px;
+      padding: 1.5rem;
+      max-width: 450px;
+      width: 100%;
+    }
+    .setup-steps {
+      text-align: left;
+      margin-bottom: 1.5rem;
+    }
+    .setup-step {
+      display: flex;
+      align-items: flex-start;
+      gap: 0.75rem;
+      margin-bottom: 1rem;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+    .setup-step:last-child { margin-bottom: 0; }
+    .step-icon {
+      width: 20px; height: 20px;
+      border-radius: 50%;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.6rem;
+      color: var(--text-muted);
+      flex-shrink: 0;
+      margin-top: 2px;
+    }
+    .step-icon.done {
+      background: var(--glow-emerald);
+      border-color: var(--accent-emerald);
+      color: var(--accent-emerald);
+    }
+    .setup-btn {
+      background: linear-gradient(135deg, var(--accent-coral), #c47a5f);
+      border: none;
+      color: var(--bg-base);
+      padding: 0.75rem 1.5rem;
+      border-radius: 8px;
+      font-family: 'Space Grotesk', sans-serif;
+      font-size: 0.9rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: all 0.2s;
+      width: 100%;
+    }
+    .setup-btn:hover {
+      transform: translateY(-1px);
+      box-shadow: 0 4px 16px rgba(212, 133, 108, 0.3);
+    }
+    .setup-btn:disabled {
+      opacity: 0.6;
+      cursor: not-allowed;
+      transform: none;
+    }
+    .setup-status {
+      margin-top: 1rem;
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+    .setup-status.success { color: var(--accent-emerald); }
+    .setup-status.error { color: var(--accent-rose); }
+    .hidden { display: none !important; }
+
+    /* Settings dropdown */
+    .settings-container {
+      position: relative;
+    }
+    .settings-btn {
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      color: var(--text-secondary);
+      width: 28px; height: 28px;
+      border-radius: 5px;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 0.9rem;
+      transition: all 0.15s;
+    }
+    .settings-btn:hover { background: var(--bg-elevated); color: var(--text-primary); }
+    .settings-dropdown {
+      position: absolute;
+      top: 100%;
+      right: 0;
+      margin-top: 0.4rem;
+      background: var(--bg-card);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      min-width: 180px;
+      box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+      z-index: 200;
+      overflow: hidden;
+      display: none;
+    }
+    .settings-dropdown.open { display: block; }
+    .settings-item {
+      display: flex;
+      align-items: center;
+      gap: 0.5rem;
+      padding: 0.6rem 0.8rem;
+      font-size: 0.75rem;
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: all 0.1s;
+      border: none;
+      background: none;
+      width: 100%;
+      text-align: left;
+    }
+    .settings-item:hover { background: var(--bg-elevated); color: var(--text-primary); }
+    .settings-item.danger:hover { background: rgba(244, 63, 94, 0.1); color: var(--accent-rose); }
+    .settings-divider {
+      height: 1px;
+      background: var(--border);
+      margin: 0.3rem 0;
+    }
+    .settings-item-icon { font-size: 0.85rem; width: 18px; text-align: center; }
+    .settings-header {
+      padding: 0.5rem 0.8rem;
+      font-size: 0.6rem;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+    .settings-item.active {
+      background: var(--glow-blue);
+      color: var(--accent-blue);
+    }
+
+    /* Smooth theme transitions */
+    body, header, .tabs-container, .message, .tool-call, .setup-card, .settings-dropdown {
+      transition: background-color 0.2s, border-color 0.2s, color 0.2s;
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <div class="logo">
+      <img src="logo.png" alt="Logo" class="logo-icon">
+      <h1>Claude Code Watcher</h1>
+    </div>
+    <div class="controls">
+      <button id="refresh-btn">Refresh</button>
+      <button id="pause-btn">Pause</button>
+      <div class="status-badge">
+        <span class="status-dot"></span>
+        <span id="status-text">Live</span>
+      </div>
+      <div class="settings-container">
+        <button class="settings-btn" id="settings-btn">⚙</button>
+        <div class="settings-dropdown" id="settings-dropdown">
+          <div class="settings-header">Hooks</div>
+          <button class="settings-item" id="install-hooks-btn">
+            <span class="settings-item-icon">↓</span>
+            <span>Install Hooks</span>
+          </button>
+          <button class="settings-item danger" id="uninstall-hooks-btn">
+            <span class="settings-item-icon">✕</span>
+            <span>Uninstall Hooks</span>
+          </button>
+          <div class="settings-divider"></div>
+          <div class="settings-header">Theme</div>
+          <button class="settings-item" id="theme-light-btn">
+            <span class="settings-item-icon">☀</span>
+            <span>Light</span>
+          </button>
+          <button class="settings-item" id="theme-dark-btn">
+            <span class="settings-item-icon">☾</span>
+            <span>Dark</span>
+          </button>
+          <div class="settings-divider"></div>
+          <div class="settings-header">Status</div>
+          <div class="settings-item" id="hook-status" style="cursor: default;">
+            <span class="settings-item-icon" id="hook-status-icon">○</span>
+            <span id="hook-status-text">Checking...</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <!-- Setup Screen (shown when hooks not configured) -->
+  <div id="setup-screen" class="setup-screen hidden">
+    <img src="logo.png" alt="Claude Code Watcher" class="setup-logo">
+    <h2 class="setup-title">Welcome to Claude Code Watcher</h2>
+    <p class="setup-subtitle">
+      Monitor your Claude Code sessions in real-time.
+      First, let's set up the monitoring hooks.
+    </p>
+    <div class="setup-card">
+      <div class="setup-steps">
+        <div class="setup-step">
+          <span class="step-icon" id="step-1">1</span>
+          <span>Create monitoring script at <code>~/.claude/monitor.js</code></span>
+        </div>
+        <div class="setup-step">
+          <span class="step-icon" id="step-2">2</span>
+          <span>Configure hooks in <code>~/.claude/settings.json</code></span>
+        </div>
+        <div class="setup-step">
+          <span class="step-icon" id="step-3">3</span>
+          <span>Start monitoring your Claude Code sessions</span>
+        </div>
+      </div>
+      <button id="setup-btn" class="setup-btn">Setup Monitoring</button>
+      <div id="setup-status" class="setup-status"></div>
+    </div>
+  </div>
+
+  <!-- Dashboard (shown when setup complete) -->
+  <div id="dashboard" class="hidden">
+    <div class="tabs-container">
+      <div class="tabs-wrapper" id="tabs">
+        <div class="no-sessions">No active sessions</div>
+      </div>
+    </div>
+    <main id="messages">
+      <div class="empty-state">
+        <h2>No session selected</h2>
+        <p>Run a Claude Code command to start monitoring</p>
+      </div>
+    </main>
+  </div>
+
+  <script>
+    // Use the secure API exposed via preload script
+    const api = window.api;
+
+    const POLL_INTERVAL = 2000;
+    const SESSIONS_POLL_INTERVAL = 5000;
+
+    let sessions = [];
+    let activeSessionId = null;
+    let sessionData = {};
+    let isPaused = false;
+    let isSetupComplete = false;
+
+    // Setup elements
+    const setupScreen = document.getElementById('setup-screen');
+    const dashboard = document.getElementById('dashboard');
+    const setupBtn = document.getElementById('setup-btn');
+    const setupStatus = document.getElementById('setup-status');
+    const step1 = document.getElementById('step-1');
+    const step2 = document.getElementById('step-2');
+    const step3 = document.getElementById('step-3');
+
+    // Dashboard elements
+    const tabsEl = document.getElementById('tabs');
+    const messagesEl = document.getElementById('messages');
+    const refreshBtn = document.getElementById('refresh-btn');
+    const pauseBtn = document.getElementById('pause-btn');
+    const statusText = document.getElementById('status-text');
+
+    // ============================================
+    // Setup Logic
+    // ============================================
+    async function checkSetup() {
+      try {
+        const status = await api.checkSetup();
+        isSetupComplete = status.claudeDirExists && status.scriptExists && status.hooksConfigured;
+
+        if (isSetupComplete) {
+          showDashboard();
+        } else {
+          showSetupScreen(status);
+        }
+      } catch (e) {
+        console.error('Setup check failed:', e);
+        showSetupScreen({});
+      }
+    }
+
+    function showSetupScreen(status) {
+      setupScreen.classList.remove('hidden');
+      dashboard.classList.add('hidden');
+
+      // Update step indicators based on current status
+      if (status.scriptExists) {
+        step1.textContent = '✓';
+        step1.classList.add('done');
+      }
+      if (status.hooksConfigured) {
+        step2.textContent = '✓';
+        step2.classList.add('done');
+      }
+    }
+
+    function showDashboard() {
+      setupScreen.classList.add('hidden');
+      dashboard.classList.remove('hidden');
+      fetchSessions();
+      startPolling();
+    }
+
+    async function runSetup() {
+      setupBtn.disabled = true;
+      setupBtn.textContent = 'Setting up...';
+      setupStatus.textContent = '';
+      setupStatus.className = 'setup-status';
+
+      try {
+        const result = await api.runSetup();
+
+        if (result.success) {
+          step1.textContent = '✓';
+          step1.classList.add('done');
+          step2.textContent = '✓';
+          step2.classList.add('done');
+          step3.textContent = '✓';
+          step3.classList.add('done');
+
+          setupStatus.textContent = 'Setup complete! Starting dashboard...';
+          setupStatus.classList.add('success');
+
+          setTimeout(() => {
+            showDashboard();
+          }, 1000);
+        } else {
+          setupStatus.textContent = `Setup failed: ${result.error}`;
+          setupStatus.classList.add('error');
+          setupBtn.disabled = false;
+          setupBtn.textContent = 'Retry Setup';
+        }
+      } catch (e) {
+        setupStatus.textContent = `Error: ${e.message}`;
+        setupStatus.classList.add('error');
+        setupBtn.disabled = false;
+        setupBtn.textContent = 'Retry Setup';
+      }
+    }
+
+    setupBtn.onclick = runSetup;
+
+    // ============================================
+    // Settings Dropdown
+    // ============================================
+    const settingsBtn = document.getElementById('settings-btn');
+    const settingsDropdown = document.getElementById('settings-dropdown');
+    const installHooksBtn = document.getElementById('install-hooks-btn');
+    const uninstallHooksBtn = document.getElementById('uninstall-hooks-btn');
+    const hookStatusIcon = document.getElementById('hook-status-icon');
+    const hookStatusText = document.getElementById('hook-status-text');
+
+    settingsBtn.onclick = (e) => {
+      e.stopPropagation();
+      settingsDropdown.classList.toggle('open');
+      if (settingsDropdown.classList.contains('open')) {
+        updateHookStatus();
+      }
+    };
+
+    document.addEventListener('click', (e) => {
+      if (!settingsDropdown.contains(e.target) && e.target !== settingsBtn) {
+        settingsDropdown.classList.remove('open');
+      }
+    });
+
+    async function updateHookStatus() {
+      try {
+        const status = await api.checkSetup();
+        const hooksInstalled = status.hooksConfigured && status.scriptExists;
+
+        if (hooksInstalled) {
+          hookStatusIcon.textContent = '●';
+          hookStatusIcon.style.color = 'var(--accent-emerald)';
+          hookStatusText.textContent = 'Hooks installed';
+          // Show uninstall, hide install
+          installHooksBtn.classList.add('hidden');
+          uninstallHooksBtn.classList.remove('hidden');
+        } else {
+          hookStatusIcon.textContent = '○';
+          hookStatusIcon.style.color = 'var(--text-muted)';
+          hookStatusText.textContent = 'Hooks not installed';
+          // Show install, hide uninstall
+          installHooksBtn.classList.remove('hidden');
+          uninstallHooksBtn.classList.add('hidden');
+        }
+      } catch (e) {
+        hookStatusText.textContent = 'Error checking status';
+      }
+    }
+
+    installHooksBtn.onclick = async () => {
+      installHooksBtn.disabled = true;
+      installHooksBtn.querySelector('span:last-child').textContent = 'Installing...';
+
+      try {
+        const result = await api.runSetup();
+        if (result.success) {
+          installHooksBtn.querySelector('span:last-child').textContent = 'Installed!';
+          await updateHookStatus();
+          setTimeout(() => {
+            installHooksBtn.querySelector('span:last-child').textContent = 'Install Hooks';
+            installHooksBtn.disabled = false;
+            settingsDropdown.classList.remove('open');
+            checkSetup(); // Refresh main view
+          }, 1000);
+        } else {
+          installHooksBtn.querySelector('span:last-child').textContent = 'Failed';
+          setTimeout(() => {
+            installHooksBtn.querySelector('span:last-child').textContent = 'Install Hooks';
+            installHooksBtn.disabled = false;
+          }, 2000);
+        }
+      } catch (e) {
+        installHooksBtn.querySelector('span:last-child').textContent = 'Error';
+        installHooksBtn.disabled = false;
+      }
+    };
+
+    // Theme toggle
+    const themeLightBtn = document.getElementById('theme-light-btn');
+    const themeDarkBtn = document.getElementById('theme-dark-btn');
+
+    function setTheme(theme) {
+      document.documentElement.setAttribute('data-theme', theme);
+      localStorage.setItem('theme', theme);
+      updateThemeButtons(theme);
+    }
+
+    function updateThemeButtons(theme) {
+      themeLightBtn.classList.toggle('active', theme === 'light');
+      themeDarkBtn.classList.toggle('active', theme === 'dark');
+    }
+
+    // Load saved theme or default to dark
+    const savedTheme = localStorage.getItem('theme') || 'dark';
+    setTheme(savedTheme);
+
+    themeLightBtn.onclick = () => setTheme('light');
+    themeDarkBtn.onclick = () => setTheme('dark');
+
+    uninstallHooksBtn.onclick = async () => {
+      if (!confirm('Remove monitoring hooks? You can reinstall them anytime.')) return;
+
+      uninstallHooksBtn.disabled = true;
+      uninstallHooksBtn.querySelector('span:last-child').textContent = 'Uninstalling...';
+
+      try {
+        const result = await api.runUninstall();
+        if (result.success) {
+          uninstallHooksBtn.querySelector('span:last-child').textContent = 'Uninstalled!';
+          await updateHookStatus();
+          setTimeout(() => {
+            uninstallHooksBtn.querySelector('span:last-child').textContent = 'Uninstall Hooks';
+            uninstallHooksBtn.disabled = false;
+            settingsDropdown.classList.remove('open');
+            checkSetup(); // Refresh main view - will show setup screen
+          }, 1000);
+        } else {
+          uninstallHooksBtn.querySelector('span:last-child').textContent = 'Failed';
+          setTimeout(() => {
+            uninstallHooksBtn.querySelector('span:last-child').textContent = 'Uninstall Hooks';
+            uninstallHooksBtn.disabled = false;
+          }, 2000);
+        }
+      } catch (e) {
+        uninstallHooksBtn.querySelector('span:last-child').textContent = 'Error';
+        uninstallHooksBtn.disabled = false;
+      }
+    };
+
+    function formatTime(ts) {
+      if (!ts) return '';
+      return new Date(ts).toLocaleTimeString('en-US', { hour12: false, hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    }
+
+    function escapeHtml(s) {
+      if (!s) return '';
+      return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+    }
+
+    function truncate(s, len=500) {
+      if (!s) return '';
+      s = String(s);
+      return s.length > len ? s.slice(0,len) + '…' : s;
+    }
+
+    function formatContent(c) {
+      if (!c) return '';
+      let h = escapeHtml(c);
+      h = h.replace(/```(\w*)\n([\s\S]*?)```/g, '<pre><code>$2</code></pre>');
+      h = h.replace(/`([^`]+)`/g, '<code>$1</code>');
+      h = h.replace(/\*\*([^*]+)\*\*/g, '<strong>$1</strong>');
+      return h;
+    }
+
+    function getToolIcon(n) {
+      const i = { Bash:'⌘', Read:'◉', Edit:'✎', Write:'✐', Grep:'⌕', Glob:'◎', Task:'◆' };
+      return i[n] || '●';
+    }
+
+    function renderToolCall(t) {
+      const s = JSON.stringify(t.input, null, 2);
+      return `<div class="tool-call" onclick="this.classList.toggle('expanded')">
+        <div class="tool-header">
+          <div class="tool-icon">${getToolIcon(t.name)}</div>
+          <span class="tool-name">${escapeHtml(t.name)}</span>
+          <span class="tool-expand">expand</span>
+        </div>
+        <div class="tool-details"><pre>${escapeHtml(truncate(s,2000))}</pre></div>
+      </div>`;
+    }
+
+    function renderToolResult(r, err) {
+      let c = typeof r === 'string' ? r : (r?.content ? (typeof r.content === 'string' ? r.content : JSON.stringify(r.content,null,2)) : JSON.stringify(r,null,2));
+      return `<div class="tool-result ${err?'error':''}"><pre>${escapeHtml(truncate(c,800))}</pre></div>`;
+    }
+
+    function renderMessage(m) {
+      const ts = formatTime(m.timestamp);
+      let content = m.message?.content;
+      if (typeof content === 'string') content = [{type:'text',text:content}];
+      else if (!Array.isArray(content)) content = [];
+      let html = '';
+
+      if (m.type === 'assistant') {
+        for (const b of content) {
+          if (b.type === 'thinking') {
+            html += `<div class="message thinking"><div class="message-header"><span class="role-badge">Thinking</span><span class="timestamp">${ts}</span></div><div class="message-content"><p>${formatContent(truncate(b.thinking,800))}</p></div></div>`;
+          }
+        }
+        const txt = content.filter(b=>b.type==='text');
+        const tools = content.filter(b=>b.type==='tool_use');
+        if (txt.length||tools.length) {
+          html += `<div class="message assistant"><div class="message-header"><span class="role-badge">Assistant</span><span class="timestamp">${ts}</span></div><div class="message-content">${txt.map(b=>`<p>${formatContent(b.text)}</p>`).join('')}${tools.map(renderToolCall).join('')}</div></div>`;
+        }
+      }
+
+      if (m.type === 'user') {
+        const results = content.filter(b=>b.type==='tool_result');
+        const txt = content.filter(b=>b.type==='text');
+        for (const r of results) {
+          html += `<div class="message user"><div class="message-header"><span class="role-badge">Result</span><span class="timestamp">${ts}</span></div><div class="message-content">${renderToolResult(r.content,r.is_error)}</div></div>`;
+        }
+        if (txt.length) {
+          html += `<div class="message user"><div class="message-header"><span class="role-badge">User</span><span class="timestamp">${ts}</span></div><div class="message-content">${txt.map(b=>`<p>${formatContent(b.text)}</p>`).join('')}</div></div>`;
+        }
+      }
+      return html;
+    }
+
+    function renderTabs() {
+      if (!sessions.length) {
+        tabsEl.innerHTML = '<div class="no-sessions">No active sessions</div>';
+        return;
+      }
+      tabsEl.innerHTML = sessions.map(s => `
+        <div class="tab ${s.id===activeSessionId?'active':''}" data-id="${s.id}" data-path="${s.path}">
+          <div class="tab-indicator"></div>
+          <span class="tab-name">${escapeHtml(s.name)}</span>
+          <span class="tab-id">${s.id.slice(0,6)}</span>
+        </div>
+      `).join('');
+      tabsEl.querySelectorAll('.tab').forEach(t => {
+        t.onclick = () => { activeSessionId = t.dataset.id; renderTabs(); renderMessages(); };
+      });
+    }
+
+    function renderMessages() {
+      if (!activeSessionId || !sessionData[activeSessionId]) {
+        messagesEl.innerHTML = '<div class="empty-state"><h2>Select a session</h2><p>Click a tab above</p></div>';
+        return;
+      }
+      const msgs = sessionData[activeSessionId].messages;
+      if (!msgs.length) {
+        messagesEl.innerHTML = '<div class="empty-state"><h2>Waiting...</h2><p>Session active, no messages yet</p></div>';
+        return;
+      }
+      messagesEl.innerHTML = [...msgs].reverse().map(renderMessage).join('');
+    }
+
+    async function fetchSessions() {
+      try {
+        const data = await api.readSessions();
+        sessions = JSON.parse(data || '[]').sort((a,b) => b.lastSeen - a.lastSeen);
+        if (!activeSessionId && sessions.length) activeSessionId = sessions[0].id;
+        const ids = new Set(sessions.map(s=>s.id));
+        for (const id of Object.keys(sessionData)) if (!ids.has(id)) delete sessionData[id];
+        renderTabs();
+      } catch(e) { console.error(e); }
+    }
+
+    async function fetchTranscript(session) {
+      if (isPaused) return;
+      const rel = session.path.replace(/.*\/.claude\//, '');
+      try {
+        const text = await api.readTranscript(rel);
+        if (!sessionData[session.id]) sessionData[session.id] = { messages: [], lastLength: 0 };
+        if (text.length === sessionData[session.id].lastLength) return;
+        sessionData[session.id].lastLength = text.length;
+        sessionData[session.id].messages = text.trim().split('\n').filter(Boolean).map(l => {
+          try { return JSON.parse(l); } catch { return null; }
+        }).filter(m => m && (m.type==='user'||m.type==='assistant'));
+        if (session.id === activeSessionId) renderMessages();
+      } catch(e) { console.error(e); }
+    }
+
+    async function pollAll() {
+      if (isPaused) return;
+      for (const s of sessions) await fetchTranscript(s);
+    }
+
+    refreshBtn.onclick = fetchSessions;
+    pauseBtn.onclick = () => {
+      isPaused = !isPaused;
+      pauseBtn.textContent = isPaused ? 'Resume' : 'Pause';
+      statusText.textContent = isPaused ? 'Paused' : 'Live';
+    };
+
+    let sessionsInterval = null;
+    let pollInterval = null;
+
+    function startPolling() {
+      if (sessionsInterval) clearInterval(sessionsInterval);
+      if (pollInterval) clearInterval(pollInterval);
+      sessionsInterval = setInterval(fetchSessions, SESSIONS_POLL_INTERVAL);
+      pollInterval = setInterval(pollAll, POLL_INTERVAL);
+    }
+
+    // Initialize - check setup status first
+    checkSetup();
+    updateHookStatus();
+  </script>
+</body>
+</html>
