@@ -15,6 +15,8 @@ npm start
 
 On first launch, click "Setup Monitoring" to install the hooks. Then run any Claude Code command to see it appear in the dashboard.
 
+For detailed installation instructions (including Windows/Linux), see [INSTALL.md](INSTALL.md).
+
 ### macOS Gatekeeper Notice
 
 If you build and install the app to `/Applications`, macOS may block it with "app is damaged" or "unidentified developer" warnings. This is because the app isn't notarized with Apple.
@@ -306,8 +308,12 @@ The design prioritizes KISS:
 
 ## Contributing
 
-Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines.
+Contributions are welcome! Please read [CONTRIBUTING.md](CONTRIBUTING.md) for guidelines and [CODE_OF_CONDUCT.md](CODE_OF_CONDUCT.md) for community standards.
 
 ## License
 
 This project is licensed under the MIT License - see the [LICENSE](LICENSE) file for details.
+
+## Changelog
+
+See [CHANGELOG.md](CHANGELOG.md) for version history.
